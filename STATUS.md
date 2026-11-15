@@ -23,6 +23,8 @@
 | DRAM is written correctly | factory fastboot uploaded to `0x16800000` boots; `fastboot devices` shows the device |
 | Hold loop keeps loader alive | after a forced storage load, `0x23154` still reads while the loader polls |
 | DTL `.ktl` container is understood | decrypt/re-encrypt round-trip byte-identical |
+| Handler entry-point patch executes at EL3 | `oem ufs_test` stub wrote magic `0xB2A0C0DE` to `0x16B8F1F8`, read back byte-identical via `oem memupload` |
+| Stock fastboot decrypted on device | `out_len 0x36C8C0`, plaintext at `0x18ECC6A0`, saved as `artifacts/fastboot.stock.decrypted.img` (sha256 `4BB40A92...`) |
 
 ## What is disproven / do not revisit
 
@@ -67,9 +69,38 @@ proving the AArch64/EL3 context can read the DRAM window that the 32-bit
 xloader cannot. `0x16dfe000`, `0x16000000`, and `0x10000000` are also readable.
 See `notes/b2-live-test.md`.
 
-The remaining work is B2a: analyze
-`hisi_secboot_decrypt_encrypted_xloader` (0x16989D30) and design a command/stub
-to decrypt the stock fastboot, then dump it with `oem memupload`.
+## B2a live validation (2026-11-15, second boot)
+
+Four handler entry points were patched in one image and exercised in one boot:
+
+- `oem memcpy_count` -> respond-only stub: OKAY. Response path is sound.
+- `oem chipid` -> `FAILED (remote: invalid command)`: the internal dispatch
+  table names are not the host-visible verb list.
+- `oem ufs_test` -> OKAY and magic `0xB2A0C0DE` read back from `0x16B8F1F8`:
+  entry-point patching works and that scratch is writable.
+- `oem onchiprom_download` -> OKAY in 0.074 s: the stock container was
+  decrypted and the plaintext published.
+
+Decrypt result: `hisi_secboot_decrypt_encrypted_xloader(0x16000000, "fastboot",
+&len)` returned `0x18ECB6A0` with `len = 0x36C8C0`. That address holds the
+container header (`"fastboot"` at +0x1C); the plaintext starts at +0x1000
+(`0x18ECC6A0`) with the AArch64 vector table and `BOOTMAGICNUMBER!`. The
+3,590,336 bytes are saved as `artifacts/fastboot.stock.decrypted.img`
+(sha256 `4BB40A92...`), which is plaintext: it matches the encrypted
+`fastboot.stock.payload.img` in only ~14k of 3.59M bytes.
+
+Two protection facts were established by crashing the SoC on purpose:
+stores into the code page (`0x16801400`) reset the device, so text is mapped
+read-only; `0x16B8F1F8` (data/bss) is writable and is the scratch to use.
+
+See `notes/b2a-live-decrypt-validation.md`.
+
+## Next open question
+
+Whether the boot chain signature-verifies the `fastboot` partition on load. If
+it does, flashing the patched stock image (or the patched NVMe `FBLOCK` block)
+is gated by secure boot and the unlock path has to run from the RAM/EL3 context
+instead of from flash.
 
 ## Operational notes
 
