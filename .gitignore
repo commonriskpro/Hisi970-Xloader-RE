@@ -1,0 +1,10 @@
+artifacts/oeminfo.dump.img
+artifacts/nvme.dump.img
+artifacts/fastboot.dump.img
+artifacts/FASTBOOT.from-update-app.img
+reports/
+recovery/
+*.ktl
+hs_err_pid*.log
+.DS_Store
+
