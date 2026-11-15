@@ -1,5 +1,11 @@
 # Work order — Kirin 970 xloader decrypted-fastboot extraction
 
+> **STATUS 2026-11-15:** milestone 2 is complete. The read primitive works, but
+> the 32-bit loader cannot read the `0x16800000`/`0x16dfe000` DRAM window; writes
+> succeed and the image boots after the ROM handoff. Read `STATUS.md` and
+> `notes/FINDINGS.md` before doing anything. Do not repeat the DRAM reads or
+> patch the loader further; the next work is offline SEB/HISEE analysis.
+
 You are the lead reverse engineer for this project. Use the DeepSeek Harness
 agent team (subagents/workflows) to split static analysis, tooling, and
 verification. Plan first and save all findings to `notes/`.

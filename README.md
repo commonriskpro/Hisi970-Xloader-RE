@@ -1,11 +1,17 @@
 # Hisi970 Xloader RE — decrypted fastboot extraction
 
-Status: **setup + static analysis**
+Status: **milestone 2 read primitive verified; DRAM unreadable from the loader;
+next step is offline SEB/HISEE analysis**
 Owner: assistant-owned project (local)
 Device: Huawei P20 EML-L09, Kirin 970, EMUI 12.0.0.226 (base 10.0.1.1,
 build 102.0.0.226), Android 10 / API 29, locked.
 
 Private repo: `https://github.com/commonriskpro/Hisi970-Xloader-RE`
+
+Read `STATUS.md` first, then `notes/FINDINGS.md`. The loader read primitive works,
+but the DRAM window holding the fastboot image cannot be read from the 32-bit
+loader; do not repeat the DRAM-read experiments. Nothing has been written to
+flash.
 
 The repo includes the decrypted xloader, the factory fastboot RAM loader,
 `null`/`uce`, the stock fastboot payload, the static map/plan, and the VCOM

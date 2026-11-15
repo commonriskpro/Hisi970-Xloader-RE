@@ -8,3 +8,6 @@ recovery/
 hs_err_pid*.log
 .DS_Store
 
+
+notes/ssh-setup.md
+notes/*.local.md
