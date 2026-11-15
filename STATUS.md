@@ -8,8 +8,9 @@
   handoff. This is a scope finding, not a patch bug.
 - Nothing has been written to flash. The stock xloader is restored in
   Kirin-Tool. The phone may need a power cycle to leave the wedged VCOM session.
-- The next work is **offline SEB/HISEE static analysis**, not another loader
-  patch. Do not repeat the DRAM reads.
+- **Offline SEB/HISEE static analysis is complete (notes/seb-analysis.md).**
+  **Verdict: NO.** The SEB/HISEE interface in this loader is verify/hash-only;
+  no read/decrypt/export command path exists.
 
 ## What is proven on hardware
 
@@ -50,14 +51,25 @@ primitive cannot recover the fastboot buffer.**
 
 ## Next step
 
-**Offline SEB/HISEE analysis** (no phone, no VCOM, no risk):
+Static analysis of 0x36DCC, 0x31074, 0x36EA0, and the ROM API 0xB2 handoff is complete (documented in notes/seb-analysis.md):
+- **Verdict: NO.** No read/decrypt-only SEB command exists in this loader.
+- 0x36DCC has a single caller (0x31116 in 0x31074), takes no command ID, and dispatches solely on status from 0xbdf0fad4.
+- SEB operations are SHA-256 hash programming (H0 at 0x3F820, opcodes 0x82/0x41/0x42) and certificate verification; no software or hardware AES export path exists.
+- 0x60035000 is a 4KB input staging scratch zeroed on return; changeStoreAddr (0x37008) updates a source-range {address, 0, length} descriptor, not a plaintext destination.
+- The remaining route is **post-handoff AArch64 code execution (EL3)** after the ROM 0xB2 handoff.
 
-1. Map `0x36dcc` (SEB/HISEE submit), `0x31074`, `0x36ea0` (changeStoreAddr) and
-   the SEB command IDs/structures.
-2. Determine whether SEB exposes a read/decrypt-only command that can return
-   image bytes, or whether the data is only reachable after the ROM handoff.
-3. If SEB can read it, design a host-side request; if not, the remaining route
-   is AArch64 code after the handoff (a much larger project).
+## B2 live validation (2026-11-15)
+
+The factory fastboot's built-in `oem memupload` command was validated on
+hardware. `oem memupload 0x16800000 0x1000` returned exactly
+`artifacts/hisi970_fastboot_ram.bin[0:0x1000]` (SHA256 `B7AFCAF0...DCD155`),
+proving the AArch64/EL3 context can read the DRAM window that the 32-bit
+xloader cannot. `0x16dfe000`, `0x16000000`, and `0x10000000` are also readable.
+See `notes/b2-live-test.md`.
+
+The remaining work is B2a: analyze
+`hisi_secboot_decrypt_encrypted_xloader` (0x16989D30) and design a command/stub
+to decrypt the stock fastboot, then dump it with `oem memupload`.
 
 ## Operational notes
 

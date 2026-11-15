@@ -11,3 +11,5 @@ hs_err_pid*.log
 
 notes/ssh-setup.md
 notes/*.local.md
+
+artifacts/option-e/

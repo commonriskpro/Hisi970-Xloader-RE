@@ -1,7 +1,6 @@
 # Hisi970 Xloader RE — decrypted fastboot extraction
 
-Status: **milestone 2 read primitive verified; DRAM unreadable from the loader;
-next step is offline SEB/HISEE analysis**
+Status: **offline SEB/HISEE analysis complete (verdict: NO); DRAM unreadable from 32-bit loader; remaining route is post-handoff AArch64**
 Owner: assistant-owned project (local)
 Device: Huawei P20 EML-L09, Kirin 970, EMUI 12.0.0.226 (base 10.0.1.1,
 build 102.0.0.226), Android 10 / API 29, locked.
