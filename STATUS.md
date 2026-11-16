@@ -117,3 +117,20 @@ See `notes/FINDINGS.md` for the full evidence, `notes/poc-status.md` for the
 chronological log, and `notes/patch-report.md` for the verified patch/CRC
 details.
 
+
+## Update — 2026-11-15 (late session)
+
+The project moved from research to a real custom-ROM bring-up. Read
+`notes/session-2026-11-15-full.md` for the consolidated record.
+
+- Stock EMUI 12 fastboot container decrypted on-device; plaintext extracted.
+- Gate G1 passed: the 9.1 bootloader boots a modified kernel.
+- AOSP Pie built from source and flashed to `system_a` (1.5 GB).
+- Root cause of the boot rejection proven from the bootloader log: the missing oeminfo
+  item `0x82` forces `fb_lock_stat = 0`, which makes the bootloader enforce AVB, and our
+  system image has no AVB metadata.
+- AVB verdict site patched (`0x168ADC0C`) and verified live in RAM; also discovered that the
+  service tool's `.ktl` loaders can be re-wrapped with its own key, so any patched bootloader
+  can be loaded through the tool.
+- Still open: the bootloader still ends in fastboot. Next step is a trace build that records
+  markers in memory so we can see how far the boot flow gets.
