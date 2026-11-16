@@ -196,3 +196,29 @@ outcome is that `normalboot` runs and fails on `loadkernel_ops`, falling back to
 - The tool's `.ktl` backups: `fastboot.ktl.orig` next to each patched copy.
 - One experiment per chain load; the RAM image is lost on reset.
 - No account, key or service was created or purchased; nothing left the local network.
+
+## 11. Addendum — mode patches make it attempt to boot, then it resets
+
+After patching both `check_boot_mode` (0x16806E44 -> `b 0x16806E84`) and
+`check_power_state` (0x16808098 -> `mov w0,#0; ret`), a chain load no longer sits in the
+fastboot menu: the screen shows the orange unlocked banner and "your device is booting now".
+Then the unit resets; the flash bootloader takes over (`FB LockState: LOCKED`, `oem memupload`
+fails) and it ends in fastboot again because AVB rejects our `system`.
+
+So the mode patches changed the flow from "enter fastboot" to "attempt boot, then reset".
+The markers written in RAM cannot be read afterwards because the reset wipes them; the only
+surviving record is the `rrecord` partition, which has to be dumped *before* the reset (i.e.
+while the bootloader is still alive) or read afterwards with the tool if the stock fastboot
+allows a partition dump.
+
+### Next experiments, in order
+
+1. **Control**: restore the stock `system_a` (2.43 GB dump) and load the same patched chain.
+   If the stock system also resets, the problem is the in-RAM kernel handoff, not AVB; if it
+   boots, our system image is what fails after the verdict.
+2. **Persist the trace**: have the marker stub write to a partition-in-RAM the bootloader
+   itself flushes (or write the markers into `bootfail_info`'s record) so they survive a reset.
+3. **Read the log**: dump `rrecord` right after an attempt and look for the last lines of the
+   RAM bootloader — they say whether `load_kernel` ran and why the handoff failed.
+4. If the handoff is the blocker, revisit `boot_kernel`/BL31 mailbox semantics (the Phase-1
+   note flagged 60% confidence there).
