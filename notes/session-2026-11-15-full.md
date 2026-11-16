@@ -197,6 +197,11 @@ outcome is that `normalboot` runs and fails on `loadkernel_ops`, falling back to
 - One experiment per chain load; the RAM image is lost on reset.
 - No account, key or service was created or purchased; nothing left the local network.
 
+## 11. Addendum — superseded
+
+See the CORRECTION section below; the claim that the mode patches caused the boot attempt was
+wrong.
+
 ## 11. Addendum — mode patches make it attempt to boot, then it resets
 
 After patching both `check_boot_mode` (0x16806E44 -> `b 0x16806E84`) and
@@ -222,3 +227,45 @@ allows a partition dump.
    RAM bootloader — they say whether `load_kernel` ran and why the handoff failed.
 4. If the handoff is the blocker, revisit `boot_kernel`/BL31 mailbox semantics (the Phase-1
    note flagged 60% confidence there).
+
+## 11. CORRECTION — the boot attempt was NOT caused by the mode patches
+
+This section replaces an earlier, wrong reading of the same events.
+
+Observed sequence across three builds:
+
+| build | contents | outcome |
+|---|---|---|
+| `powpatch` | AVB patch + `check_boot_mode` -> next + `check_power_state` -> next | lands in the fastboot menu |
+| `trace` | AVB patch + markers at `load_kernel` and after the AVB call | lands in fastboot; both markers read back as 0 |
+| `modetrace` | AVB patch + 8 markers on the mode functions (**no behavioural change**) | orange banner, "booting your device", then a reset and the flash bootloader |
+
+An earlier version of this document claimed the mode patches caused the boot attempt. That is
+**wrong**: the build that attempted to boot is the one that only instruments, and the build
+with the behavioural patches did not attempt it. Two honest possibilities remain, and they
+must be separated by experiment, not by inference:
+
+1. The boot attempt is timing-dependent (USB enumeration race around the chain load).
+2. The marker stubs disturbed a mode function: they clobber `x9`/`x10` without saving them,
+   and `check_boot_mode`/`check_power_state`/`check_misc_info` may carry live values in those
+   registers at entry. A marker stub that saves and restores `x9`/`x10` (as the later ones do)
+   removes this variable.
+
+### What is still established
+
+- Before `load_kernel` is reached, the RAM bootloader decides its mode; with the stock
+  decisions it ends in the fastboot menu, and `load_kernel` is never entered (both markers 0).
+- When a boot attempt does happen, it ends in a reset, which wipes RAM and with it every
+  marker; the flash bootloader then runs unpatched and AVB rejects our `system`.
+- So the trace must survive a reset, or the control experiment must remove the boot attempt
+  from the equation.
+
+### Next experiments, in order
+
+1. **Control**: restore the stock `system_a` (2.43 GB dump) and load the same patched chain.
+   Stock system + AVB patch + stock decisions: if it boots, our system image is the problem; if
+   it resets, the in-RAM kernel handoff is.
+2. **Reproducibility**: run the same `modetrace` chain twice. A boot attempt that appears only
+   sometimes is a race, not a decision.
+3. **Persist the trace**: write markers to `bootfail_info` (the record the bootloader flushes)
+   so they survive a reset.
